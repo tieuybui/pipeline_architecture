@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pipeline Architecture Diagram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
+  h1 { text-align: center; color: #58a6ff; margin-bottom: 5px; font-size: 24px; }
+  .subtitle { text-align: center; color: #8b949e; margin-bottom: 30px; font-size: 14px; }
+
+  .diagram { display: flex; flex-direction: column; align-items: center; gap: 0; max-width: 1400px; margin: 0 auto; }
+
+  .arrow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .arrow-line { width: 3px; height: 30px; background: #30363d; }
+  .arrow-head { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid #30363d; }
+
+  .stage { width: 100%; border: 2px solid #30363d; border-radius: 12px; padding: 15px; position: relative; background: #161b22; }
+  .stage-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .stage-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .stage-title { font-size: 16px; font-weight: 600; }
+  .stage-desc { font-size: 12px; color: #8b949e; margin-left: auto; }
+
+  .env { border-color: #58a6ff; border-width: 3px; }
+  .env .stage-badge { background: #58a6ff; color: #0d1117; }
+  .brz { border-color: #d29922; }
+  .brz .stage-badge { background: #d29922; color: #0d1117; }
+  .ref { border-color: #da8ee7; }
+  .ref .stage-badge { background: #da8ee7; color: #0d1117; }
+  .slv { border-color: #8b949e; }
+  .slv .stage-badge { background: #8b949e; color: #0d1117; }
+  .gld { border-color: #e3b341; }
+  .gld .stage-badge { background: #e3b341; color: #0d1117; }
+  .gld-specific { border-color: #f0883e; }
+  .gld-specific .stage-badge { background: #f0883e; color: #0d1117; }
+  .dq { border-color: #f85149; border-style: dashed; background: #1a0f0f; }
+  .dq .stage-badge { background: #f85149; color: #fff; }
+  .warehouse { border-color: #a371f7; }
+  .warehouse .stage-badge { background: #a371f7; color: #0d1117; }
+  .pbi { border-color: #3fb950; }
+  .pbi .stage-badge { background: #3fb950; color: #0d1117; }
+  .orchestrator { border-color: #58a6ff; border-width: 3px; }
+  .orchestrator .stage-badge { background: #58a6ff; color: #0d1117; }
+
+  .items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .item { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-family: 'Cascadia Code', monospace; background: #21262d; border: 1px solid #30363d; }
+  .item.shared { border-color: #e3b341; color: #e3b341; }
+  .item.new { border-color: #3fb950; color: #3fb950; }
+  .item.dq-item { border-color: #f85149; color: #f85149; }
+  .item.ref-item { border-color: #da8ee7; color: #da8ee7; }
+  .item.usp { border-color: #a371f7; color: #a371f7; }
+  .item.engine { border-color: #58a6ff; color: #58a6ff; }
+  .item.freq { border-color: #d29922; color: #d29922; font-style: italic; }
+
+  .parallel { display: flex; gap: 15px; width: 100%; align-items: flex-start; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 30px; justify-content: center; padding: 15px; border: 1px solid #30363d; border-radius: 8px; background: #161b22; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+
+  .annotation { font-size: 11px; color: #8b949e; font-style: italic; margin-top: 6px; }
+  .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 4px; }
+  .tag-parallel { background: #1f6feb33; color: #58a6ff; }
+  .tag-reuse { background: #e3b34133; color: #e3b341; }
+  .tag-new { background: #3fb95033; color: #3fb950; }
+
+  .env-tabs { display: flex; gap: 0; margin-bottom: 20px; justify-content: center; }
+  .env-tab { padding: 8px 24px; border: 2px solid #30363d; background: #161b22; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .env-tab:first-child { border-radius: 8px 0 0 8px; }
+  .env-tab:last-child { border-radius: 0 8px 8px 0; }
+  .env-tab.active-dev { background: #1f6feb33; border-color: #58a6ff; color: #58a6ff; }
+  .env-tab.active-test { background: #d2992233; border-color: #d29922; color: #d29922; }
+  .env-tab.active-prod { background: #3fb95033; border-color: #3fb950; color: #3fb950; }
+
+  .section-label { text-align: center; color: #484f58; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<h1>Supply Chain Analytics - Pipeline Architecture</h1>
+<p class="subtitle">Modular sub-pipeline design with DQ checkpoints, multi-environment support, and REFRESH_FREQ scheduling</p>
+
+<div class="diagram">
+
+  <!-- ENV CONFIG -->
+  <div class="stage env" style="text-align:center; padding: 12px;">
+    <div class="stage-header" style="justify-content: center; margin-bottom: 8px;">
+      <span class="stage-badge">ENV</span>
+      <span class="stage-title">nb_env_config</span>
+    </div>
+    <div class="items" style="justify-content: center;">
+      <span class="item engine">Auto-detect workspace name</span>
+      <span class="item engine">Or FABRIC_ENV pipeline parameter</span>
+    </div>
+    <div style="display: flex; gap: 30px; justify-content: center; margin-top: 12px;">
+      <div style="text-align: center;">
+        <div style="font-size: 12px; font-weight: 700; color: #58a6ff; margin-bottom: 4px;">DEV</div>
+        <div style="font-size: 10px; color: #8b949e;">SupplyChain_Lakehouse_Dev</div>
+        <div style="font-size: 10px; color: #8b949e;">Lookback: 1yr | Limit: 10,000</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 12px; font-weight: 700; color: #d29922; margin-bottom: 4px;">TEST</div>
+        <div style="font-size: 10px; color: #8b949e;">SupplyChain_Lakehouse_Test</div>
+        <div style="font-size: 10px; color: #8b949e;">Lookback: 3yr | Limit: none</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 12px; font-weight: 700; color: #3fb950; margin-bottom: 4px;">PROD</div>
+        <div style="font-size: 10px; color: #8b949e;">SupplyChain_Lakehouse</div>
+        <div style="font-size: 10px; color: #8b949e;">Lookback: 3yr | Limit: none</div>
+      </div>
+    </div>
+    <div class="annotation" style="text-align: center; margin-top: 8px;">Same code, different config per environment. Deploy via Fabric Deployment Pipelines (Dev → Test → Prod)</div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- ORCHESTRATOR -->
+  <div class="stage orchestrator" style="text-align:center; padding: 10px;">
+    <span class="stage-badge">MASTER</span>
+    <span class="stage-title">pl_master</span>
+    <span class="stage-desc">Orchestrator - calls sub-pipelines in order</span>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- BRZ + REF PARALLEL -->
+  <div class="parallel">
+    <!-- BRZ -->
+    <div style="flex: 1.3;">
+      <div class="stage brz">
+        <div class="stage-header">
+          <span class="stage-badge">BRZ</span>
+          <span class="stage-title">pl_brz_ingestion</span>
+          <span class="stage-desc">15 notebooks <span class="tag tag-parallel">PARALLEL</span></span>
+        </div>
+        <div class="annotation">Load raw data from source → naming convention, data type, null handling</div>
+        <div class="annotation">Engine: nb_brz_engine | LOAD_TYPE: overwrite | incremental</div>
+        <div class="items" style="margin-top: 8px;">
+          <span class="item">nb_brz_Customers__AccountMaster</span>
+          <span class="item">nb_brz_Customers__ShippingLocations</span>
+          <span class="item">nb_brz_MasterData_DW__DimDate</span>
+          <span class="item">nb_brz_MasterData_DW__DimItemMaster</span>
+          <span class="item">nb_brz_SalesHistory_AFI__InvoiceDetail <span class="tag" style="background:#d2992233;color:#d29922;">hourly</span></span>
+          <span class="item">nb_brz_SalesHistory_AFI__InvoiceHeader <span class="tag" style="background:#d2992233;color:#d29922;">hourly</span></span>
+          <span class="item">nb_brz_SupplyChain_DW__DimAFIWarehouses</span>
+          <span class="item">nb_brz_SupplyChain_DW__DimCurrentProductDetails</span>
+          <span class="item">nb_brz_SupplyChain_Enh_1__DemandForecast <span class="tag" style="background:#d2992233;color:#d29922;">monthly:1</span></span>
+          <span class="item">nb_brz_Wholesale_Codis_AFI__AAORDTYP</span>
+          <span class="item">nb_brz_Wholesale_Codis_AFI__COMAST <span class="tag" style="background:#d2992233;color:#d29922;">weekly:6:22</span></span>
+          <span class="item">nb_brz_Wholesale_Codis_AFI__EXTORD <span class="tag" style="background:#d2992233;color:#d29922;">weekly:6:22</span></span>
+          <span class="item">nb_brz_Wholesale_Codis_AFI__EXTORIT <span class="tag" style="background:#d2992233;color:#d29922;">weekly:6:22</span></span>
+          <span class="item">nb_brz_Wholesale_Codis_AFI__codatan <span class="tag" style="background:#d2992233;color:#d29922;">weekly:6:22</span></span>
+          <span class="item">nb_brz_Wholesale_ProductSourcing_AFI__CustomerGrouping</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- REF -->
+    <div style="flex: 0.7;">
+      <div class="stage ref">
+        <div class="stage-header">
+          <span class="stage-badge">REF</span>
+          <span class="stage-title">pl_ref</span>
+          <span class="stage-desc">9 notebooks <span class="tag tag-parallel">PARALLEL</span></span>
+        </div>
+        <div class="annotation">Dimension tables, read from source, ready to use</div>
+        <div class="annotation">Engine: nb_brz_engine | LOAD_TYPE: overwrite (always)</div>
+        <div class="items" style="margin-top: 8px;">
+          <span class="item ref-item">nb_ref_calendar</span>
+          <span class="item ref-item">nb_ref_customer_account</span>
+          <span class="item ref-item">nb_ref_customer_grouping</span>
+          <span class="item ref-item">nb_ref_customer_shipping_location</span>
+          <span class="item ref-item">nb_ref_warehouse</span>
+          <span class="item ref-item">nb_ref_product</span>
+          <span class="item ref-item">nb_ref_item_master</span>
+          <span class="item ref-item">nb_ref_order_type</span>
+          <span class="item ref-item">nb_ref_forecast_cycle</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- DQ BRZ + REF -->
+  <div class="parallel">
+    <div style="flex:1;">
+      <div class="stage dq" style="text-align: center;">
+        <span class="stage-badge">DQ</span>
+        <span class="stage-title">nb_dq_after_brz</span>
+        <div class="items" style="justify-content: center; margin-top: 6px;">
+          <span class="item dq-item">row_count</span>
+          <span class="item dq-item">completeness</span>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div class="stage dq" style="text-align: center;">
+        <span class="stage-badge">DQ</span>
+        <span class="stage-title">nb_dq_after_ref</span>
+        <div class="items" style="justify-content: center; margin-top: 6px;">
+          <span class="item dq-item">completeness</span>
+          <span class="item dq-item">uniqueness</span>
+          <span class="item dq-item">custom_sql</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="annotation" style="text-align: center;">FAIL critical → STOP pipeline | WARN → continue + alert | Results → dq_results table</div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- SLV -->
+  <div class="stage slv">
+    <div class="stage-header">
+      <span class="stage-badge">SLV</span>
+      <span class="stage-title">pl_slv_transform</span>
+      <span class="stage-desc">JOIN brz facts + ref dims + calculated columns</span>
+    </div>
+    <div class="annotation">Engine: nb_slv_engine | LOAD_TYPE: overwrite | incremental</div>
+    <div class="items" style="margin-top: 8px;">
+      <span class="item">nb_slv_invoice_detail_line_level <span class="tag" style="background:#d2992233;color:#d29922;">hourly</span></span>
+      <span class="item">nb_slv_open_order_line_level <span class="tag" style="background:#d2992233;color:#d29922;">weekly:6:22</span></span>
+      <span class="item">nb_slv_naive_forecast_monthly <span class="tag" style="background:#d2992233;color:#d29922;">monthly:1</span></span>
+      <span class="item">nb_slv_actual_demand_monthly</span>
+      <span class="item">nb_slv_actual_demand_weekly</span>
+      <span class="item">nb_slv_forecast_demand_monthly</span>
+      <span class="item">nb_slv_invoice_weekly</span>
+      <span class="item">nb_slv_open_order_monthly</span>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- DQ SLV -->
+  <div class="stage dq" style="max-width: 600px; text-align: center;">
+    <span class="stage-badge">DQ</span>
+    <span class="stage-title">nb_dq_after_slv</span>
+    <div class="items" style="justify-content: center; margin-top: 6px;">
+      <span class="item dq-item">completeness</span>
+      <span class="item dq-item">uniqueness</span>
+      <span class="item dq-item">validity (range/enum)</span>
+      <span class="item dq-item">custom_sql</span>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- GLD -->
+  <div class="stage gld">
+    <div class="stage-header">
+      <span class="stage-badge">GLD</span>
+      <span class="stage-title">pl_gld</span>
+      <span class="stage-desc">Aggregate + metrics for Power BI</span>
+    </div>
+    <div class="annotation">Engine: nb_gld_engine | LOAD_TYPE: overwrite (dims) | merge_monthly (facts)</div>
+    <div style="display: flex; gap: 15px; margin-top: 10px;">
+      <div style="flex: 0.4;">
+        <div class="section-label">Dimensions</div>
+        <div class="items">
+          <span class="item shared">nb_gld_dim_calendar</span>
+          <span class="item shared">nb_gld_dim_warehouse</span>
+          <span class="item shared">nb_gld_dim_product</span>
+          <span class="item shared">nb_gld_dim_customer_group</span>
+        </div>
+      </div>
+      <div style="flex: 0.6;">
+        <div class="section-label">Facts</div>
+        <div class="items">
+          <span class="item">nb_gld_fact_actual_demand_monthly <span class="tag" style="background:#d2992233;color:#d29922;">twice_daily</span></span>
+          <span class="item">nb_gld_fact_actual_demand_weekly <span class="tag" style="background:#d2992233;color:#d29922;">twice_daily</span></span>
+          <span class="item">nb_gld_fact_forecast_demand_monthly <span class="tag" style="background:#d2992233;color:#d29922;">monthly:1</span></span>
+          <span class="item">nb_gld_fact_naive_forecast_monthly</span>
+          <span class="item">nb_gld_fact_invoice_weekly</span>
+          <span class="item">nb_gld_fact_open_order_monthly</span>
+          <span class="item">nb_gld_fact_open_order_line_level</span>
+          <span class="item">nb_gld_fact_forecast_kpi_metric</span>
+          <span class="item">nb_gld_fact_flat_forecast_actual</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- DQ GLD -->
+  <div class="stage dq" style="max-width: 600px; text-align: center;">
+    <span class="stage-badge">DQ</span>
+    <span class="stage-title">nb_dq_after_gld</span>
+    <div class="items" style="justify-content: center; margin-top: 6px;">
+      <span class="item dq-item">referential_integrity</span>
+      <span class="item dq-item">completeness</span>
+      <span class="item dq-item">row_count</span>
+      <span class="item dq-item">freshness</span>
+      <span class="item dq-item">custom_sql</span>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+  <!-- PARALLEL: Warehouse + Power BI -->
+  <div class="parallel">
+    <div style="flex:1;">
+      <div class="stage warehouse">
+        <div class="stage-header">
+          <span class="stage-badge">WAREHOUSE</span>
+          <span class="stage-title">Load to SQL Endpoint</span>
+        </div>
+        <div class="items">
+          <span class="item usp">usp_Load_Dim_Calendar</span>
+          <span class="item usp">usp_Load_Dim_Customer_Grouping</span>
+          <span class="item usp">usp_Load_Dim_Product</span>
+          <span class="item usp">usp_Load_Dim_Warehouse</span>
+          <span class="item usp">usp_Load_Fact_Flat_Forecast_Actual</span>
+          <span class="item usp">usp_Load_Fact_Forecast_KPI</span>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div class="stage pbi" style="text-align: center; min-height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <span class="stage-badge">POWER BI</span>
+        <span class="stage-title">Supply Chain Control Tower</span>
+        <div class="annotation">DirectLake from Lakehouse + DQ Dashboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DQ Results -->
+  <div style="margin-top: 20px; width: 100%;">
+    <div class="stage" style="border-color: #f85149; background: #1a0f0f; text-align: center;">
+      <div class="stage-header" style="justify-content: center;">
+        <span class="stage-badge" style="background: #f85149; color: #fff;">DQ RESULTS</span>
+        <span class="stage-title">dbo.dq_results (Lakehouse Delta Table)</span>
+      </div>
+      <div class="items" style="justify-content: center; margin-top: 6px;">
+        <span class="item dq-item">7 check types: completeness, uniqueness, referential_integrity, row_count, validity, freshness, custom_sql</span>
+      </div>
+      <div class="annotation" style="text-align: center;">All DQ checks write results here → Power BI DQ Dashboard reads from this table</div>
+    </div>
+  </div>
+
+  <!-- ENGINES BOX -->
+  <div style="margin-top: 20px; width: 100%;">
+    <div class="stage" style="border-color: #58a6ff; text-align: center;">
+      <div class="stage-header" style="justify-content: center; margin-bottom: 8px;">
+        <span class="stage-badge" style="background: #58a6ff; color: #0d1117;">CORE ENGINES</span>
+        <span class="stage-title">refactored/core/ — Do not edit</span>
+      </div>
+      <div class="items" style="justify-content: center;">
+        <span class="item engine">nb_env_config</span>
+        <span class="item engine">nb_brz_engine</span>
+        <span class="item engine">nb_slv_engine</span>
+        <span class="item engine">nb_gld_engine</span>
+        <span class="item engine">nb_dq_engine</span>
+      </div>
+      <div style="display: flex; gap: 20px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
+        <div class="item" style="border-color: #484f58; color: #8b949e;">should_run(REFRESH_FREQ)</div>
+        <div class="item" style="border-color: #484f58; color: #8b949e;">resolve_load_strategy()</div>
+        <div class="item" style="border-color: #484f58; color: #8b949e;">save_watermark()</div>
+        <div class="item" style="border-color: #484f58; color: #8b949e;">utl_pipeline_metadata</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFRESH_FREQ BOX -->
+  <div style="margin-top: 20px; width: 100%;">
+    <div class="stage" style="border-color: #d29922; text-align: center;">
+      <div class="stage-header" style="justify-content: center; margin-bottom: 8px;">
+        <span class="stage-badge" style="background: #d29922; color: #0d1117;">REFRESH_FREQ</span>
+        <span class="stage-title">Scheduling per notebook</span>
+      </div>
+      <div class="items" style="justify-content: center;">
+        <span class="item freq">None = always run</span>
+        <span class="item freq">hourly</span>
+        <span class="item freq">twice_daily</span>
+        <span class="item freq">daily</span>
+        <span class="item freq">weekly</span>
+        <span class="item freq">weekly:6:22 = Sun 10PM</span>
+        <span class="item freq">monthly</span>
+        <span class="item freq">monthly:1 = 1st of month</span>
+        <span class="item freq">monthly:5:06 = 5th at 6AM</span>
+      </div>
+      <div class="annotation" style="text-align: center;">Engine checks utl_pipeline_metadata.last_load_date → skip if not time yet</div>
+    </div>
+  </div>
+
+  <!-- DEPLOY FLOW -->
+  <div style="margin-top: 20px; width: 100%;">
+    <div class="stage" style="border-color: #3fb950; text-align: center;">
+      <div class="stage-header" style="justify-content: center; margin-bottom: 8px;">
+        <span class="stage-badge" style="background: #3fb950; color: #0d1117;">DEPLOY</span>
+        <span class="stage-title">Fabric Deployment Pipelines</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 5px;">
+        <div style="padding: 8px 20px; border: 2px solid #58a6ff; border-radius: 8px; color: #58a6ff; font-weight: 600;">DEV<div style="font-size:10px;color:#8b949e;">Code here</div></div>
+        <div style="color: #30363d; font-size: 20px;">→</div>
+        <div style="padding: 8px 20px; border: 2px solid #d29922; border-radius: 8px; color: #d29922; font-weight: 600;">TEST<div style="font-size:10px;color:#8b949e;">UAT here</div></div>
+        <div style="color: #30363d; font-size: 20px;">→</div>
+        <div style="padding: 8px 20px; border: 2px solid #3fb950; border-radius: 8px; color: #3fb950; font-weight: 600;">PROD<div style="font-size:10px;color:#8b949e;">Live here</div></div>
+      </div>
+      <div class="annotation" style="text-align: center; margin-top: 8px;">Same code deployed across environments. nb_env_config auto-detects workspace → correct lakehouse + settings.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-color" style="background: #58a6ff;"></div> ENV Config / Core Engines</div>
+  <div class="legend-item"><div class="legend-color" style="background: #d29922;"></div> BRZ - Raw data (source → naming + typing)</div>
+  <div class="legend-item"><div class="legend-color" style="background: #da8ee7;"></div> REF - Dimensions (source → ready to use)</div>
+  <div class="legend-item"><div class="legend-color" style="background: #8b949e;"></div> SLV - JOIN + calculated columns</div>
+  <div class="legend-item"><div class="legend-color" style="background: #e3b341;"></div> GLD - Aggregate + metrics for dashboard</div>
+  <div class="legend-item"><div class="legend-color" style="background: #f85149;"></div> DQ - Quality checkpoints (7 check types)</div>
+  <div class="legend-item"><div class="legend-color" style="background: #a371f7;"></div> Warehouse / Stored Procedures</div>
+  <div class="legend-item"><div class="legend-color" style="background: #3fb950;"></div> Power BI / Deploy</div>
+</div>
+
+</body>
+</html>
